@@ -5,8 +5,10 @@ from pathlib import Path
 import evaluate
 import numpy as np
 import pandas as pd
+import torch
 from datasets import Dataset
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -18,6 +20,29 @@ from transformers import (
 
 from src.config import DEFAULT_MODEL_NAME, LABELS
 from src.data_prep import build_dataset
+
+
+class WeightedLossTrainer(Trainer):
+    def __init__(self, class_weights=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if class_weights is not None:
+            self.class_weights = torch.tensor(class_weights, dtype=torch.float)
+        else:
+            self.class_weights = None
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+        
+        if self.class_weights is not None:
+            device = logits.device
+            loss_fct = torch.nn.CrossEntropyLoss(weight=self.class_weights.to(device))
+        else:
+            loss_fct = torch.nn.CrossEntropyLoss()
+            
+        loss = loss_fct(logits.view(-1, model.config.num_labels), labels.view(-1))
+        return (loss, outputs) if return_outputs else loss
 
 
 def tokenize_dataset(dataset: Dataset, tokenizer: AutoTokenizer, max_length: int) -> Dataset:
@@ -75,35 +100,38 @@ def train(args: argparse.Namespace) -> None:
     )
     print(f"Original train size: {len(train_df)} | Eval size: {len(eval_df)}")
 
-    # 2. Balance only the training set using hybrid resampling (undersample majority, oversample minority)
-    def balance_train_dataset(train_data: pd.DataFrame, max_majority_size: int) -> pd.DataFrame:
+    # 2. Balance only the training set using hybrid resampling (undersample majority, mild oversample minority)
+    def balance_train_dataset(train_data: pd.DataFrame, max_majority_size: int, min_minority_size: int = 300) -> pd.DataFrame:
         if train_data.empty:
             return train_data
         groups = {label: group for label, group in train_data.groupby("label")}
         
-        # We cap the majority class size at max_majority_size to speed up training
         majority_label = 0
-        if majority_label in groups:
-            majority_size = len(groups[majority_label])
-            target_size = min(majority_size, max_majority_size)
-        else:
-            target_size = max(len(g) for g in groups.values())
-
         balanced_groups = []
         for label, group in groups.items():
-            if label == majority_label and len(group) > target_size:
-                balanced_groups.append(group.sample(n=target_size, random_state=42))
+            if label == majority_label:
+                n_samples = min(len(group), max_majority_size)
+                balanced_groups.append(group.sample(n=n_samples, random_state=42))
             else:
-                balanced_groups.append(group.sample(n=target_size, replace=len(group) < target_size, random_state=42))
-                
+                if len(group) < min_minority_size:
+                    balanced_groups.append(group.sample(n=min_minority_size, replace=True, random_state=42))
+                else:
+                    balanced_groups.append(group)
+                    
         return pd.concat(balanced_groups).sample(frac=1, random_state=42).reset_index(drop=True)
 
     train_df = balance_train_dataset(train_df, args.max_majority_size)
-    print(f"Balanced train size (after oversampling minority classes): {len(train_df)}")
+    print(f"Balanced train size (with mild minority oversampling): {len(train_df)}")
     print("Train label distribution:")
     print(train_df["label"].value_counts().to_string())
     print("Eval label distribution:")
     print(eval_df["label"].value_counts().to_string())
+
+    # Compute class weights on the resampled training set
+    y_train = train_df["label"].values
+    classes = np.unique(y_train)
+    class_weights = compute_class_weight(class_weight="balanced", classes=classes, y=y_train)
+    print(f"Computed class weights for WeightedLossTrainer: {class_weights}")
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -156,7 +184,7 @@ def train(args: argparse.Namespace) -> None:
     elif "processing_class" in trainer_arg_names:
         trainer_kwargs["processing_class"] = tokenizer
 
-    trainer = Trainer(**trainer_kwargs)
+    trainer = WeightedLossTrainer(class_weights=class_weights, **trainer_kwargs)
     trainer.train()
     trainer.evaluate()
     trainer.save_model(args.output_dir)
@@ -171,7 +199,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=2e-5)
-    parser.add_argument("--max-length", type=int, default=128)  # Changed default to 128 for 4x faster training
+    parser.add_argument("--max-length", type=int, default=256)  # Set default to 256 for better legal clause coverage
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument(
         "--sample-frac",
