@@ -1,0 +1,31 @@
+text,label,source,category,document
+We use encryption to protect your personal information during transmission and storage.,0,seed,security,seed-low
+You may request access to your data and ask us to correct inaccurate personal information.,0,seed,user rights,seed-low
+You can delete your account and request deletion of your personal data at any time.,0,seed,user rights,seed-low
+We do not sell your personal information to advertisers or unrelated third parties.,0,seed,data sale,seed-low
+We collect only the information needed to provide the service and follow data minimization practices.,0,seed,data minimization,seed-low
+You may opt out of marketing emails by using the unsubscribe link in each email.,0,seed,marketing,seed-low
+We allow you to withdraw consent for optional processing through your privacy settings.,0,seed,consent,seed-low
+Personal data is retained only for as long as necessary for the stated purpose.,0,seed,retention,seed-low
+We provide privacy controls so you can manage cookies and advertising preferences.,0,seed,privacy controls,seed-low
+The service supports two-factor authentication to help keep your account secure.,0,seed,security,seed-low
+We may use cookies to remember your preferences and improve website performance.,1,seed,cookies,seed-medium
+"We collect usage data such as pages viewed, clicks, and session duration for analytics.",1,seed,analytics,seed-medium
+We may share information with service providers who help us operate the platform.,1,seed,service providers,seed-medium
+"We may collect your IP address, browser type, and device information when you use the service.",1,seed,device data,seed-medium
+We use analytics tools to understand user behavior and improve our products.,1,seed,analytics,seed-medium
+We may send marketing communications about new features unless you opt out.,1,seed,marketing,seed-medium
+Third-party integrations may process limited account information to provide connected features.,1,seed,third party,seed-medium
+We may retain your information to comply with legal requirements and resolve disputes.,1,seed,retention,seed-medium
+Advertising partners may receive limited technical identifiers to measure campaign performance.,1,seed,advertising,seed-medium
+We may process approximate location information based on your IP address.,1,seed,location,seed-medium
+We may sell your personal information to advertising partners for targeted marketing.,2,seed,data sale,seed-high
+"By using the service, you waive your right to participate in any class action lawsuit.",2,seed,rights waiver,seed-high
+All disputes must be resolved through binding arbitration and not in court.,2,seed,arbitration,seed-high
+"We are not liable for loss of data, lost profits, or damages arising from your use of the service.",2,seed,liability,seed-high
+"You grant us an irrevocable, perpetual, worldwide license to use your uploaded content.",2,seed,content license,seed-high
+We may change these terms at any time without notice to you.,2,seed,terms change,seed-high
+We may terminate your account at any time at our sole discretion without explanation.,2,seed,termination,seed-high
+We may collect precise location data even when the application is running in the background.,2,seed,location,seed-high
+We may share sensitive personal information with third parties for marketing purposes.,2,seed,sensitive data,seed-high
+Employees may be required to work for 16 hours a day during peak business periods.,2,seed,labor risk,seed-high
